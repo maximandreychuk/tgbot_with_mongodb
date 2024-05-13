@@ -5,14 +5,13 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from app import keyboards as kb
-from app import database_requests
-from datetime import datetime
+import datetime
 import pprint
 import random
 
 
 """Константы."""
-PRETTY_DATE = datetime.today().strftime('%Y-%m-%d')
+PRETTY_DATE = str(datetime.date.today()+datetime.timedelta(days=2))
 
 """Сэттингс БД."""
 router = Router()
@@ -33,20 +32,26 @@ async def start_page(message: Message):
 
 @router.callback_query(F.data=='go_to_reg')
 async def get_all_movies(callback: CallbackQuery):
-   await callback.message.answer(text = f'Это твой ник? {callback.from_user.username}', 
+   await callback.message.answer(text = f'Это твой ник? @{callback.from_user.username}', 
                                  reply_markup = kb.yes_is_my_username)
    
+"""Проверка наличия юзера в БД."""
 @router.callback_query(F.data=='yes_is_my_username')
 async def get_all_movies(callback: CallbackQuery):
+   lst=[]
    try:
       for dic in [i for i in collection.find()]:
-         if dic['username'] != callback.from_user.username:
-            collection.insert_one({'username': callback.from_user.username})
-         else: pass
-   except KeyError:
-      pass
-   await callback.message.answer(text = f'Тогда, {callback.from_user.first_name}, выбирай время для записи:', 
-                                 reply_markup = kb.reg_time)   
+         for i in dic.values():
+             if i == callback.from_user.username:
+                  lst.append(1)
+   except KeyError: pass
+   if len(lst) == 0:
+      collection.insert_one({"username": callback.from_user.username})
+      await callback.message.answer(text = f'Тогда, {callback.from_user.first_name}, выбирай время для записи:', 
+                                    reply_markup = kb.reg_time)
+   else:
+      await callback.message.answer(text = f'Тогда, {callback.from_user.first_name}, выбирай время для записи:', 
+                                    reply_markup = kb.reg_time)
 
 """Выбор времени для записи."""
 @router.callback_query(F.data=='10')
@@ -70,15 +75,18 @@ async def get_all_movies(callback: CallbackQuery):
                               {'$set': {'time': '18:00'}})
    await callback.message.answer(text = 'Поздравляю ты записан на 18:00')
 
+"""Добавить одну запись."""
+@router.message(Command('add_one'))
+async def get_all_movies(message: Message):
+   collection.insert_one({'username': message.from_user.username})
+   await message.answer(f'{[i for i in collection.find()]}')
 
-@router.callback_query(F.data=='get_quentin_mov')
-async def get_all_movies(callback: CallbackQuery):
-   await callback.message.answer(f'{[i for i in database_requests.qt_mov]}')
+"""Показать все записи."""
+@router.message(Command('get_all'))
+async def get_all_movies(message: Message):
+   await message.answer(f'{[i for i in collection.find()]}')
 
-@router.callback_query(F.data=='find_name_collection')
-async def get_all_movies(callback: CallbackQuery):
-   await callback.message.answer(text = f'{name_collection}')
-
+"""Удаление всех записей."""
 @router.callback_query(F.data=='delete_all')
 async def get_all_movies(callback: CallbackQuery):
    collection.delete_many({})
