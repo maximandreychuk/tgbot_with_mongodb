@@ -14,11 +14,6 @@ TOKEN_API = '6383832464:AAGEfozQ4lKYMVRpzXgdfRLoYrwmqu9jdpk'
 bot = Bot(token=TOKEN_API)
 dp = Dispatcher()
 
-"""Настройки MongoDB."""
-cluster = MongoClient("mongodb://localhost:27017/")
-base = cluster.shop
-collection = base.series
-
 """Main."""
 async def main():
     dp.include_router(router)
